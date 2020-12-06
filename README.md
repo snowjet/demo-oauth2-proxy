@@ -1,6 +1,6 @@
 # demo-oauth2-proxy
 
-In my previous post - https://developers.redhat.com/blog/2020/08/03/authorizing-multi-language-microservices-with-louketo-proxy/-  I explained how to use Louketo-Proxy to provide authentication and authorization to your microservice. Since then, the Louketo-Proxy project has become end-of-life and the developers are recommending the oauth2-proxy project as an alternative. 
+In my previous post - https://developers.redhat.com/blog/2020/08/03/authorizing-multi-language-microservices-with-louketo-proxy/  I explained how to use Louketo-Proxy to provide authentication and authorization to your microservice. Since then, the Louketo-Proxy project has become end-of-life and the developers are recommending the oauth2-proxy project as an alternative. 
 
 This repo explains how to use oauth2-proxy with KeyCloak to provide authentication to your microservice. 
 
