@@ -15,7 +15,7 @@ export oauth2ContainerUrl="image-registry.openshift-image-registry.svc:5000/${PR
 export ssoPubKey=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/realms/master | jq -r .public_key`
 
 
-ACCESS_TOKEN=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/realms/master/protocol/openid-connect/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=password&username=admin&password=louketo-demo&client_id=admin-cli' | jq -r .access_token`
+ACCESS_TOKEN=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/realms/master/protocol/openid-connect/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=password&username=admin&password=oauth2-demo&client_id=admin-cli' | jq -r .access_token`
 CLIENT=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/admin/realms/master/clients -H 'Content-Type: application/json' -H  "Authorization: Bearer ${ACCESS_TOKEN}" | jq -r -c '.[] | select (.clientId | contains("oauth2-proxy")) | .id'`
 export clientSecret=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/admin/realms/master/clients/${CLIENT}/client-secret -H 'Content-Type: application/json' -H  "Authorization: Bearer ${ACCESS_TOKEN}" | jq -r .value`
 
