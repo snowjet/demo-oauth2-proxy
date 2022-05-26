@@ -10,13 +10,56 @@ This repo explains how to use oauth2-proxy with KeyCloak to provide authenticati
 export PROJECT="keyauth"
 oc new-project ${PROJECT}
 oc new-app --name sso \
-    --docker-image=quay.io/keycloak/keycloak \
-    -e KEYCLOAK_USER='admin' \
-    -e KEYCLOAK_PASSWORD='oauth2-demo' \
-    -e PROXY_ADDRESS_FORWARDING='true' \
+    --image=quay.io/keycloak/keycloak:18.0 \
+    -e KEYCLOAK_ADMIN='admin' \
+    -e KEYCLOAK_ADMIN_PASSWORD='oauth2-demo' \
+    -e KC_PROXY='edge' \
     -n ${PROJECT}
 
-oc create route edge --service=sso -n ${PROJECT}
+oc patch deployment sso -p '{"spec": {"template": {"spec": {"containers": [{ "name": "sso", "command": ["/opt/keycloak/bin/kc.sh"], "args": ["start-dev", "--proxy edge"]}]}}}}'
+
+oc create route edge --service=sso --insecure-policy=Redirect -n ${PROJECT}
+```
+
+## All-in-One
+
+The instructions below explain how to configure KeyCloak along with how to configure and deploy the application. To make life easier you can just run the all_in_one.sh script to do this. Take note of the testuser's username and password. The password is randomly generated.
+
+```bash
+./all_in_one.sh keyauth
+------Setting Exports------
+setting appUrls
+set appUrl apps-crc.testing
+setting cookieSecret
+set cookieSecret 1HNDVO3wYq-hP2xvIL4tPA==
+setting oauth2ContainerUrl
+set oauth2ContainerUrl quay.io/oauth2-proxy/oauth2-proxy:latest
+Setting SSOBaseURL and AppBaseURL
+SSO Url: https://sso-keyauth.apps-crc.testing
+App Url: https://flask-keyauth.apps-crc.testing
+
+------Configure KeyCloak Client------
+setting ssoPubKey
+setting ACCESS_TOKEN
+Create CLIENT
+Get CLIENT ID
+client id: 0f44ce51-8ff9-41dd-bab6-0629521e2e01
+setting clientSecret
+{"type":"secret","value":"**************************************************"}
+Getting clientSecret
+
+------Configure Users and Groups------
+Create Groups
+Create Users
+testuser username: testuser
+testuser password: U1Px7u24jrM
+
+------Deploy App------
+configmap/oauth-config created
+configmap/sso-public-key created
+deploymentconfig.apps.openshift.io/flask created
+service/flask created
+route.route.openshift.io/flask created
 ```
 
 ### Configure KeyCloak
@@ -40,15 +83,15 @@ For example if you KeyCloak url is: https://sso-keyauth.apps-crc.testing. Then s
 #### Configure the mappers
 Applying a Group Mapper is optional, but it does allow us to pass the group memberships of our users through to our microservice as “X-Forwarded-Groups” which is useful for informing authorisation functions within the microservice. 
 
-##### Select the Mappers tab and add mapper:
-Groups:
-* Name: groups
-* Mapper type: Group Membership
-* Token claim name: groups
+##### Select the Mappers tab and add Group and Audience mapper:
+
+Oauth2-proxy requires that you creat a mapper with:
+* Mapper Type 'Group Membership' and Token Claim Name 'groups'.
+* Mapper Type 'Audience' and Included Client Audience and Included Custom Audience set to your client name.
 
 Remember to unselect the Full group path option as shown in the diagram below:
 
-![SSO Group Mapper](images/02_confidential.png?raw=true "SSO Group Mapper")
+![SSO Group Mapper](images/04_groups_mapper.png?raw=true "SSO Group Mapper")
 
 
 ##### Configure the user groups
@@ -57,18 +100,7 @@ Now select Groups from the left-hand menu and add two groups:
 * basic_user
 
 #### Configure the user
-Again from the left-hand menu, select Users and add a user. Be sure to enter an email and set a password for the user, then add the user to the basic_user and admin groups that you just created. Next, we’ll configure Louketo Proxy and the example application.
-
-## Build oauth2-proxy
-The current release of the oauth2-proxy is 6.1.1. One of the features we are showing is how groups can be forwarded through from KeyCloak to the microservice. 
-
-Unfortunately, version 6.1.1 does not currently support this for the generic OpenID Connect Provider. However, the pre-release version 7 supports group forwarding, but you will need to build the container manually. Thankfully OpenShift can do this for us. 
-
-```bash
-oc new-build https://github.com/oauth2-proxy/oauth2-proxy.git --strategy=docker
-```
-
-If you do not require the group forward capability set the oauth2ContainerUrl to quay.io/oauth2-proxy/oauth2-proxy within the create_app.sh file
+Again from the left-hand menu, select Users and add a user. Be sure to enter an email and set a password for the user, then add the user to the basic_user and admin groups that you just created. Next, we’ll configure Ouath2 Proxy and the example application.
 
 ## Deploy the application
 ```
@@ -82,14 +114,22 @@ or run the following commands manually
 export PROJECT="keyauth"
 export appsUrl=`oc get route sso -o template --template '{{.spec.host}}' | cut -d '.' -f 2-`
 export cookieSecret=`python -c 'import os,base64; print(base64.urlsafe_b64encode(os.urandom(16)).decode())'`
-export oauth2ContainerUrl="image-registry.openshift-image-registry.svc:5000/${PROJECT}/oauth2-proxy"
-export ssoPubKey=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/realms/master | jq -r .public_key`
+export oauth2ContainerUrl="quay.io/oauth2-proxy/oauth2-proxy:latest"
+export SSOBaseURL="https://sso-${PROJECT}.${appsUrl}"
+export AppBaseURL="https://flask-${PROJECT}.${appsUrl}"
+export ssoPubKey=`curl -k -s ${SSOBaseURL}/realms/master | jq -r '.public_key'`
 
+ACCESS_TOKEN=`curl -k -s ${SSOBaseURL}/realms/master/protocol/openid-connect/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=password&username=admin&password=oauth2-demo&client_id=admin-cli' | jq -r .access_token`
 
-export ACCESS_TOKEN=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/realms/master/protocol/openid-connect/token -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=password&username=admin&password=oauth2-demo&client_id=admin-cli' | jq -r .access_token`
-export CLIENT=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/admin/realms/master/clients -H 'Content-Type: application/json' -H  "Authorization: Bearer ${ACCESS_TOKEN}" | jq -r -c '.[] | select (.clientId | contains("oauth2-proxy")) | .id'`
-export clientSecret=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/admin/realms/master/clients/${CLIENT}/client-secret -H 'Content-Type: application/json' -H  "Authorization: Bearer ${ACCESS_TOKEN}" | jq -r .value`
+CLIENT=`curl -k -s ${SSOBaseURL}/admin/realms/master/clients -H 'Content-Type: application/json' -H  "Authorization: Bearer ${ACCESS_TOKEN}" | jq -r -c '.[] | select (.clientId | contains("oauth2-proxy")) | .id'`
 
+echo "setting clientSecret"
+curl -k -s -X POST ${SSOBaseURL}/admin/realms/master/clients/${CLIENT}/client-secret -H 'Content-Type: application/json' -H  "Authorization: Bearer ${ACCESS_TOKEN}"
+
+echo "Getting clientSecret"
+export clientSecret=`curl -k -s ${SSOBaseURL}/admin/realms/master/clients/${CLIENT}/client-secret -H 'Content-Type: application/json' -H  "Authorization: Bearer ${ACCESS_TOKEN}" | jq -r .value`
+
+echo "------Deploy App------"
 cat oc_templates/*.yml | envsubst '${PROJECT} ${oauth2ContainerUrl} ${appsUrl} ${ssoPubKey} ${clientSecret} ${cookieSecret}' |  oc apply -n ${PROJECT} -f -
 oc create route edge --service=flask --port 4180 -n ${PROJECT}
 ```

@@ -12,6 +12,10 @@ data:
 
     pass_authorization_header='true'
     pass_access_token='true'
+  
+    set_authorization_header = true
+    ssl_insecure_skip_verify = true
+    ssl_upstream_insecure_skip_verify = true
     
     # the http url(s) of the upstream endpoint. If multiple, routing is based on path
     upstreams = "http://127.0.0.1:8080/"
@@ -20,12 +24,12 @@ data:
     whitelist_domains=[".${appsUrl}"] # Required to allow redirection back to original requested target.
 
     # keycloak provider
-    provider="oidc"
+    provider="keycloak-oidc"
     provider_display_name="Keycloak"
 
     client_secret="${clientSecret}"
-
     client_id="oauth2-proxy"
-    oidc_issuer_url="https://sso-${PROJECT}.${appsUrl}/auth/realms/master"
+
+    oidc_issuer_url="https://sso-${PROJECT}.${appsUrl}/realms/master"
     
     redirect_url="https://flask-${PROJECT}.${appsUrl}/oauth2/callback"
