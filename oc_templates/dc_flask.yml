@@ -1,0 +1,43 @@
+---
+kind: DeploymentConfig
+apiVersion: apps.openshift.io/v1
+metadata:
+ name: flask
+ labels:
+   app: flask
+spec:
+ strategy:
+   type: Rolling
+ replicas: 1
+ selector:
+   app: flask
+ template:
+   metadata:
+     labels:
+       app: flask
+   spec:
+     containers:
+       - name: flask
+         image: quay.io/rnagalin/flask-sso-gatekeeper@sha256:cb7c6f876c0c9f86f729281ec7d2282619764a3e0fbf987afaee290b1676ed43
+         ports:
+           - containerPort: 8080
+             protocol: TCP
+         envFrom:
+           - configMapRef:
+               name: sso-public-key
+         imagePullPolicy: IfNotPresent
+       - name: oauth2
+         image: ${oauth2ContainerUrl}
+         args:
+           - --config=/etc/oauth2-proxy.cfg
+         ports:
+           - containerPort: 4180
+             name: oauth2
+         volumeMounts:
+           - name: oauth-config
+             mountPath: /etc/oauth2-proxy.cfg
+             subPath: oauth2-proxy.cfg
+     volumes:
+       - name : oauth-config
+         configMap:
+           name: oauth-config

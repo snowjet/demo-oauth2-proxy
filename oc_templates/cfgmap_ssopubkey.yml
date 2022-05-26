@@ -1,0 +1,10 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+ name: sso-public-key
+data:
+ PUBLIC_KEY: |
+   -----BEGIN PUBLIC KEY-----
+   ${ssoPubKey}
+   -----END PUBLIC KEY-----
