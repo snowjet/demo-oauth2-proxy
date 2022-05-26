@@ -65,7 +65,7 @@ or run the following commands manually
 export PROJECT="keyauth"
 export appsUrl=`oc get route sso -o template --template '{{.spec.host}}' | cut -d '.' -f 2-`
 export cookieSecret=`python -c 'import os,base64; print(base64.urlsafe_b64encode(os.urandom(16)).decode())'`
-export oauth2Url="image-registry.openshift-image-registry.svc:5000/${PROJECT}/oauth2-proxy"
+export oauth2ContainerUrl="image-registry.openshift-image-registry.svc:5000/${PROJECT}/oauth2-proxy"
 export ssoPubKey=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/realms/master | jq -r .public_key`
 
 
@@ -73,6 +73,6 @@ export ACCESS_TOKEN=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/realms/maste
 export CLIENT=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/admin/realms/master/clients -H 'Content-Type: application/json' -H  "Authorization: Bearer ${ACCESS_TOKEN}" | jq -r -c '.[] | select (.clientId | contains("oauth2-proxy")) | .id'`
 export clientSecret=`curl -s https://sso-${PROJECT}.${appsUrl}/auth/admin/realms/master/clients/${CLIENT}/client-secret -H 'Content-Type: application/json' -H  "Authorization: Bearer ${ACCESS_TOKEN}" | jq -r .value`
 
-cat oc_templates/*.yml | envsubst '${PROJECT} ${oauth2Url} ${appsUrl} ${ssoPubKey} ${clientSecret} ${cookieSecret}' |  oc apply -n ${PROJECT} -f -
+cat oc_templates/*.yml | envsubst '${PROJECT} ${oauth2ContainerUrl} ${appsUrl} ${ssoPubKey} ${clientSecret} ${cookieSecret}' |  oc apply -n ${PROJECT} -f -
 oc create route edge --service=flask --port 4180 -n ${PROJECT}
 ```
