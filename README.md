@@ -10,7 +10,7 @@ This repo explains how to use oauth2-proxy with KeyCloak to provide authenticati
 export PROJECT="keyauth"
 oc new-project ${PROJECT}
 oc new-app --name sso \
-    --image=quay.io/keycloak/keycloak:18.0 \
+    --image=quay.io/keycloak/keycloak:20.0 \
     -e KEYCLOAK_ADMIN='admin' \
     -e KEYCLOAK_ADMIN_PASSWORD='oauth2-demo' \
     -e KC_PROXY='edge' \

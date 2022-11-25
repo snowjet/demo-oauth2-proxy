@@ -1,0 +1,7 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+ name: sso-logout-url
+data:
+ SSO_LOGOUTURL: "/oauth2/logout?rd=https://sso-${PROJECT}.${appsUrl}/realms/master/protocol/openid-connect/logout"

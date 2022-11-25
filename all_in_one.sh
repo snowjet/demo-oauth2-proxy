@@ -7,9 +7,10 @@ fi
 
 if [[ -z $PROJECT ]]; then
    export PROJECT="${1}"
+   oc project ${PROJECT}
 fi
 
-echo"------Setting Exports------"
+echo "------Setting Exports------"
 echo "setting appUrls"
 export appsUrl=`oc get route sso -o template --template '{{.spec.host}}' | cut -d '.' -f 2-`
 echo "set appUrl ${appsUrl}"
@@ -25,7 +26,7 @@ export AppBaseURL="https://flask-${PROJECT}.${appsUrl}"
 echo "SSO URL: ${SSOBaseURL}"
 echo "App URL: ${AppBaseURL}"
 
-echo"------Configure KeyCloak Client------"
+echo "------Configure KeyCloak Client------"
 echo "setting ssoPubKey"
 export ssoPubKey=`curl -k -s ${SSOBaseURL}/realms/master | jq -r '.public_key'`
 # debug
@@ -162,6 +163,47 @@ userJSON='
         }
     ],
     "groups": ["basic_user"]
+}'
+
+echo $userJSON | curl -k -X POST ${SSOBaseURL}/admin/realms/master/users \
+    -H "Content-Type: application/json" \
+    -H  "Authorization: Bearer ${ACCESS_TOKEN}"  \
+    -d @-
+
+
+groupJSON='
+{
+    "name": "admin",
+    "path": "/admin"
+}'
+
+echo "Create Groups"
+echo $groupJSON | curl -k -X POST ${SSOBaseURL}/admin/realms/master/groups \
+    -H "Content-Type: application/json" \
+    -H  "Authorization: Bearer ${ACCESS_TOKEN}"  \
+    -d @-
+
+echo "Create Users"
+userPassword=`python -c 'import secrets; print(secrets.token_urlsafe(8))'`
+echo 'testuser username: superuser'
+echo "testuser password: ${userPassword}"
+userJSON='
+{
+    "username": "superuser",
+    "enabled": true,
+    "totp": false,
+    "emailVerified": true,
+    "firstName": "Super",
+    "lastName": "User",
+    "email": "superuser@home.net",
+    "credentials": [
+        {
+            "type": "password",
+            "value": "'"${userPassword}"'",
+            "temporary": false
+        }
+    ],
+    "groups": ["basic_user","admin"]
 }'
 
 echo $userJSON | curl -k -X POST ${SSOBaseURL}/admin/realms/master/users \

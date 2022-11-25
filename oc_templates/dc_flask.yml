@@ -18,7 +18,7 @@ spec:
    spec:
      containers:
        - name: flask
-         image: quay.io/rnagalin/flask-sso-gatekeeper@sha256:d325c38fdbd3a94bb99637d94956f01b0812af8254c953c7446d16e9b300d091
+         image: quay.io/snowjet/flask-sso-gatekeeper@sha256:44b52c5ed977710bb33e4c56b90dec85f0814b613581a3cad9b69bd1fe2766a0
          ports:
            - containerPort: 8080
              protocol: TCP
